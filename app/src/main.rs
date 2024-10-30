@@ -28,14 +28,14 @@ impl Entry {
         Ok(Self {
             abs_location: abs_location.to_owned(),
             display: abs_location.to_string_lossy().into_owned(),
-            kind: fs::metadata(&abs_location)?.file_type(),
+            kind: fs::symlink_metadata(&abs_location)?.file_type(),
         })
     }
     fn new_with_display(abs_location: &Path, display: &str) -> Result<Self> {
         Ok(Self {
             abs_location: abs_location.to_owned(),
             display: display.to_owned(),
-            kind: fs::metadata(&abs_location)?.file_type(),
+            kind: fs::symlink_metadata(&abs_location)?.file_type(),
         })
     }
 }
