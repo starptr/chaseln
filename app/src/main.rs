@@ -76,6 +76,8 @@ impl Iterator for EntryIteratorContext {
 fn main() -> Result<()> {
     let args = cli::get_args();
     let filename = args.filename;
+    // Slightly normalize the input path
+    let filename = filename.components().as_path();
     let abspath = any_path_to_abs(&get_cwd()?, &filename);
     let it = EntryIteratorContext::new(&abspath)?;
     let mut is_first = true;
