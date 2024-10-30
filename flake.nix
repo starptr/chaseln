@@ -36,6 +36,7 @@
         {
           devenv-up = self.devShells.${system}.default.config.procfileScript;
           chaseln = pkgs.rustPackages.rustPlatform.buildRustPackage {
+            # TODO: get these values from Cargo.toml
             pname = "chaseln";
             version = "0.1.0";
             src = ./app;
@@ -43,6 +44,7 @@
               lockFile = ./app/Cargo.lock;
             };
           };
+          default = self.packages.${system}.chaseln;
         }
       );
 
