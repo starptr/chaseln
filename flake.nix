@@ -32,13 +32,13 @@
               allowBroken = true;
             };
           };
+          metadata = builtins.fromTOML (builtins.readFile ./app/Cargo.toml);
         in
         {
           devenv-up = self.devShells.${system}.default.config.procfileScript;
           chaseln = pkgs.rustPackages.rustPlatform.buildRustPackage {
-            # TODO: get these values from Cargo.toml
-            pname = "chaseln";
-            version = "0.1.0";
+            pname = metadata.package.name;
+            version = metadata.package.version;
             src = ./app;
             cargoLock = {
               lockFile = ./app/Cargo.lock;
