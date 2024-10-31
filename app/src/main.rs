@@ -121,7 +121,6 @@ fn main() -> Result<()> {
     let filename = filename.components().as_path();
     let abspath = any_path_to_abs(&get_cwd()?, &filename);
     let it = EntryIteratorContext::new(&abspath);
-    println!("{:?}", it);
     let mut is_first = true;
     for entry in it {
         if !is_first {
