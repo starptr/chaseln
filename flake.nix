@@ -64,9 +64,9 @@
       overlays = {
         chaseln = final: prev: {
           chaseln = self.packages.${final.stdenv.hostPlatform.system}.chaseln;
-        }
+        };
         default = self.overlays.chaseln;
-      }
+      };
 
       formatter = forEachSystem (
         system:
