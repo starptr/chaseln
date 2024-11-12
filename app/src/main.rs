@@ -3,6 +3,7 @@ mod cli;
 use std::path::{PathBuf, Path};
 use std::fs;
 use anyhow::Result;
+use std::collections::HashSet;
 
 fn get_cwd() -> Result<PathBuf> {
     let cwd = std::env::current_dir()?;
@@ -57,7 +58,7 @@ impl std::fmt::Display for EntryKind {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum EntryPrefix {
     /// No prefix for the first entry
     First,
@@ -65,6 +66,8 @@ enum EntryPrefix {
     Dereferenced,
     /// This entry is the same as the previous entry, without the trailing slash
     TrimmedTrailingSlash,
+    /// This entry has been seen before, so the curent symlink chase is cyclic
+    Seen,
 }
 
 impl std::fmt::Display for EntryPrefix {
@@ -73,6 +76,7 @@ impl std::fmt::Display for EntryPrefix {
             EntryPrefix::First => write!(f, ""),
             EntryPrefix::Dereferenced => write!(f, "→ "),
             EntryPrefix::TrimmedTrailingSlash => write!(f, "← "),
+            EntryPrefix::Seen => write!(f, "🔁 "),
         }
     }
 }
@@ -114,12 +118,19 @@ impl std::fmt::Display for Entry {
 #[derive(Debug)]
 struct EntryIteratorContext {
     current_entry: Option<Entry>,
+    seen: HashSet<PathBuf>,
 }
 impl EntryIteratorContext {
     fn new(abs_location: &Path) -> Self {
+        let initial_entry = Entry::new(abs_location, EntryPrefix::First);
+        let seen = HashSet::from([initial_entry.abs_location.clone()]);
         Self {
-            current_entry: Some(Entry::new(abs_location)),
+            current_entry: Some(initial_entry),
+            seen,
         }
+    }
+    fn has_seen(&self, abs_location: &Path) -> bool {
+        self.seen.contains(abs_location)
     }
 }
 impl Iterator for EntryIteratorContext {
@@ -129,22 +140,39 @@ impl Iterator for EntryIteratorContext {
             return None;
         }
         let entry = self.current_entry.as_ref().unwrap();
+        // If the entry was already seen, this entry should be the last one shown
+        if entry.prefix == EntryPrefix::Seen {
+            return self.current_entry.take();
+        }
         match entry.kind {
             EntryKind::Symlink => {
                 let symlink_content = fs::read_link(&entry.abs_location).ok()?;
                 let parent = entry.abs_location.parent()?;
                 let next_abs_location = any_path_to_abs(parent, &symlink_content);
-                let new_entry = Entry::new_with_display(&next_abs_location, EntryPrefix::Dereferenced, &symlink_content.to_string_lossy());
+                let new_entry = {
+                    let mut entry = Entry::new_with_display(&next_abs_location, EntryPrefix::Dereferenced, &symlink_content.to_string_lossy());
+                    if self.has_seen(&entry.abs_location) {
+                        entry.prefix = EntryPrefix::Seen;
+                    }
+                    entry
+                };
                 self.current_entry.replace(new_entry)
             }
             EntryKind::Directory => {
                 let loc_str = entry.abs_location.to_string_lossy();
+                // If the directory doesn't end in a slash, the entry is not a symlink pretending to be a directory
                 if !loc_str.ends_with("/") {
                     return self.current_entry.take();
                 }
                 // Slightly normalize the directory path
                 let next_abs_location = entry.abs_location.components().as_path();
-                let new_entry = Entry::new_with_display(next_abs_location, EntryPrefix::TrimmedTrailingSlash, &next_abs_location.to_string_lossy());
+                let new_entry = {
+                    let mut entry = Entry::new_with_display(next_abs_location, EntryPrefix::TrimmedTrailingSlash, &next_abs_location.to_string_lossy());
+                    if self.has_seen(&entry.abs_location) {
+                        entry.prefix = EntryPrefix::Seen;
+                    }
+                    entry
+                };
                 self.current_entry.replace(new_entry)
             }
             _ => self.current_entry.take(),
