@@ -1,5 +1,6 @@
 mod cli;
 
+use std::ffi::OsString;
 use std::path::{PathBuf, Path};
 use std::fs;
 use anyhow::Result;
@@ -118,19 +119,20 @@ impl std::fmt::Display for Entry {
 #[derive(Debug)]
 struct EntryIteratorContext {
     current_entry: Option<Entry>,
-    seen: HashSet<PathBuf>,
+    /// Use OsString, because the PartialEq for PathBuf is not strict enough
+    seen: HashSet<OsString>,
 }
 impl EntryIteratorContext {
     fn new(abs_location: &Path) -> Self {
         let initial_entry = Entry::new(abs_location, EntryPrefix::First);
-        let seen = HashSet::from([initial_entry.abs_location.clone()]);
+        let seen = HashSet::from([initial_entry.abs_location.clone().into_os_string()]);
         Self {
             current_entry: Some(initial_entry),
             seen,
         }
     }
     fn has_seen(&self, abs_location: &Path) -> bool {
-        self.seen.contains(abs_location)
+        self.seen.contains(abs_location.as_os_str())
     }
 }
 impl Iterator for EntryIteratorContext {
