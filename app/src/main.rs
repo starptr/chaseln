@@ -1,10 +1,10 @@
 mod cli;
 
-use std::ffi::OsString;
-use std::path::{PathBuf, Path};
-use std::fs;
 use anyhow::Result;
 use std::collections::HashSet;
+use std::ffi::OsString;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 fn get_cwd() -> Result<PathBuf> {
     let cwd = std::env::current_dir()?;
@@ -152,7 +152,11 @@ impl Iterator for EntryIteratorContext {
                 let parent = entry.abs_location.parent()?;
                 let next_abs_location = any_path_to_abs(parent, &symlink_content);
                 let new_entry = {
-                    let mut entry = Entry::new_with_display(&next_abs_location, EntryPrefix::Dereferenced, &symlink_content.to_string_lossy());
+                    let mut entry = Entry::new_with_display(
+                        &next_abs_location,
+                        EntryPrefix::Dereferenced,
+                        &symlink_content.to_string_lossy(),
+                    );
                     if self.has_seen(&entry.abs_location) {
                         entry.prefix = EntryPrefix::Seen;
                     }
@@ -169,7 +173,11 @@ impl Iterator for EntryIteratorContext {
                 // Slightly normalize the directory path
                 let next_abs_location = entry.abs_location.components().as_path();
                 let new_entry = {
-                    let mut entry = Entry::new_with_display(next_abs_location, EntryPrefix::TrimmedTrailingSlash, &next_abs_location.to_string_lossy());
+                    let mut entry = Entry::new_with_display(
+                        next_abs_location,
+                        EntryPrefix::TrimmedTrailingSlash,
+                        &next_abs_location.to_string_lossy(),
+                    );
                     if self.has_seen(&entry.abs_location) {
                         entry.prefix = EntryPrefix::Seen;
                     }
