@@ -24,6 +24,9 @@
     }@inputs:
     let
       forEachSystem = nixpkgs.lib.genAttrs (import systems);
+      metadata = builtins.fromTOML (builtins.readFile ./app/Cargo.toml);
+      pname = metadata.package.name;
+      version = metadata.package.version;
     in
     {
       packages = forEachSystem (
@@ -35,19 +38,17 @@
               allowBroken = true;
             };
           };
-          metadata = builtins.fromTOML (builtins.readFile ./app/Cargo.toml);
         in
         {
           devenv-up = self.devShells.${system}.default.config.procfileScript;
-          chaseln = cardboard.lib.keepFnInput pkgs.rustPackages.rustPlatform.buildRustPackage {
-            pname = metadata.package.name;
-            version = metadata.package.version;
+          ${pname} = cardboard.lib.keepFnInput pkgs.rustPackages.rustPlatform.buildRustPackage {
+            inherit pname version;
             src = ./app;
             cargoLock = {
               lockFile = ./app/Cargo.lock;
             };
           };
-          default = self.packages.${system}.chaseln;
+          default = self.packages.${system}.${pname};
         }
       );
 
@@ -65,10 +66,10 @@
       );
 
       overlays = {
-        chaseln = final: prev: {
-          chaseln = self.packages.${final.stdenv.hostPlatform.system}.chaseln;
+        ${pname} = final: prev: {
+          ${pname} = self.packages.${final.stdenv.hostPlatform.system}.${pname};
         };
-        default = self.overlays.chaseln;
+        default = self.overlays.${pname};
       };
 
       formatter = forEachSystem (
